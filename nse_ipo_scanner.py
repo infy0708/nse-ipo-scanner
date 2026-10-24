@@ -58,41 +58,71 @@ CONFIG = {
 # ─────────────────────────────────────────────
 
 DEFAULT_IPO_TICKERS = [
-    # 2024-2026 NSE IPOs — add/remove as needed
+    # ── EXISTING WATCHLIST ──────────────────────────────────────────
     "BAJAJHFL.NS",      # Bajaj Housing Finance
     "PREMIER.NS",       # Premier Energies
     "NTPCGREEN.NS",     # NTPC Green Energy
-    "VISHNUSYA.NS",     # Vishnu Prakash R Punglia
     "RKSWAMY.NS",       # RK Swamy
     "GODIGIT.NS",       # Go Digit General Insurance
     "BHARTIHEXA.NS",    # Bharti Hexacom
-    "JYOTIINDL.NS",
-    "VIBHORST.NS",
     "INVENTURUS.NS",    # Inventurus Knowledge Solutions
-    "MOBIKWIK.NS",
-    "NCORE.NS",
-    "SUNCW.NS",
-    "RPOWER.NS",
-    "DIFFUSION.NS",
+    "MOBIKWIK.NS",      # MobiKwik
     "IXIGO.NS",         # Le Travenues Technology (ixigo)
     "AWFIS.NS",         # Awfis Space Solutions
     "EXICOM.NS",        # Exicom Tele-Systems
-    "KRYSTAL.NS",       # Krystal Integrated Services
-    "MHRIL.NS",
-    "TMRWCOMB.NS",
-    "VRAJ.NS",          # Vraj Iron and Steel
-    "MAST.NS",
-    "SOLARINDS.NS",
-    "CMSINFO.NS",
-    "MUKKA.NS",
     "JSWINFRA.NS",      # JSW Infrastructure
     "SIGNATUREG.NS",    # Signature Global
     "TBOTEK.NS",        # TBO Tek
-    "INOX.NS",
-    "RESOURCEFUL.NS",
-    "MAMATA.NS",
-    "CREDO.NS",
-    "BSFC.NS",
+
+    # ── NEWLY ADDED (Oct 2026 listings) ────────────────────────────
+    "HDFIRE.NS",        # HD Fire Protect Ltd           — listed Oct 21, 2026
+    "FUSIONCX.NS",      # Fusion CX Ltd                 — listed Oct 22, 2026
+    "SMT.NS",           # Sahajanand Medical Tech        — listed Oct 23, 2026
+    "BONFIG.NS",        # Bonfiglioli Transmissions     — listed Oct 23, 2026
+    "TONBO.NS",         # Tonbo Imaging India           — listed Oct 23, 2026
+    "ZETWERK.NS",       # Zetwerk Manufacturing         — listed Oct 23, 2026
+
+    # ── RECENTLY LISTED (Aug–Oct 2026) ─────────────────────────────
+    "RUNWALENTR.NS",    # Runwal Enterprises            — listed Oct 5, 2026
+    "MANIPALHOS.NS",    # Manipal Health Enterprises    — listed Aug 5, 2026
+    "JNPR.NS",          # Juniper Green Energy          — listed Aug 6, 2026
+    "MVELECTRO.NS",     # MV Electrosystems             — listed Aug 6, 2026
+    "DHOOTTRANS.NS",    # Dhoot Transmission            — listed Aug 2026
+
+    # ── LISTED EARLIER IN 2026 ─────────────────────────────────────
+    "FRACTAL.NS",       # Fractal Analytics             — listed Feb 16, 2026
+    "GAUDIUMIVF.NS",    # Gaudium IVF & Women Health    — listed Feb 27, 2026
+    "SHADOWFAX.NS",     # Shadowfax Technologies        — listed Jan 28, 2026
+    "HEXAGON.NS",       # Hexagon Nutrition             — listed Jun 12, 2026
+
+    # ── NOT YET LISTED — add once they list on NSE ─────────────────
+    # "VISHNIRMITI.NS", # Vishal Nirmiti Ltd
+    # "SRITINDIA.NS",   # SRIT India Ltd
+    # "MONEYVIEW.NS",   # Moneyview Ltd
+    # "ELEVATECMP.NS",  # Elevate Campuses Ltd
+    # "VARMORA.NS",     # Varmora Granito Ltd
+    # "HEROMOT.NS",     # Hero Motors Ltd
+    # "SHIPROCKET.NS",  # Shiprocket Ltd
+    # "MILKYMIST.NS",   # Milky Mist Dairy Food Ltd
+    # "MOLBIO.NS",      # Molbio Diagnostics Ltd
+    # "SYMBIOTEC.NS",   # Symbiotec Pharmalab Ltd
+    # "AUGMONT.NS",     # Augmont Enterprises Ltd
+    # "LOHIACORP.NS",   # Lohia Corp Ltd
+    # "AYEFINANCE.NS",  # Aye Finance Ltd
+    # "AMAGI.NS",       # Amagi Media Labs Ltd
+    # "BCLCOAL.NS",     # Bharat Coking Coal Ltd
+    # "PURPLSTYLE.NS",  # Purple Style Labs Ltd
+    # "ESDS.NS",        # ESDS Software Solution Ltd
+    # "TURTLEMINT.NS",  # Turtlemint Fintech Solutions Ltd
+    # "CMRGREEN.NS",    # CMR Green Technologies Ltd
+    # "SBIFUNDS.NS",    # SBI Funds Management Ltd
+    # "POWERICA.NS",    # Powerica Ltd
+    # "CLEANMAX.NS",    # Clean Max Enviro Energy Solutions
+    # "RENTOMOJO.NS",   # Rentomojo Ltd
+    # "PRASOL.NS",      # Prasol Chemicals Ltd
+    # "LEAPINDIA.NS",   # LEAP India Ltd
+    # "TECHNOCFT.NS",   # Technocraft Ventures Ltd
+    # "ARDEEINDS.NS",   # Ardee Industries Ltd
 ]
 
 
