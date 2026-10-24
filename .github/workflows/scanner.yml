@@ -24,8 +24,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install yfinance pandas requests
-          pip install pandas_ta --no-deps
+          pip install yfinance pandas requests schedule
 
       - name: Run NSE IPO Scanner
         env:
