@@ -15,15 +15,17 @@ Usage:
 
 import yfinance as yf
 import pandas as pd
-import pandas_ta as ta
 import requests
 import json
 import os
 import argparse
 import schedule
 import time
-import os
 from datetime import datetime, timedelta
+
+# Simple EMA calculation — no external TA library needed
+def ema(series, length):
+    return series.ewm(span=length, adjust=False).mean()
 
 # ─────────────────────────────────────────────
 # CONFIGURATION  ← Edit these
@@ -215,8 +217,8 @@ def check_trend(df: pd.DataFrame) -> dict:
     Healthy trend = price above key EMAs, EMAs in correct order.
     """
     close = df["Close"]
-    ema20 = ta.ema(close, length=CONFIG["ema_fast"])
-    ema50 = ta.ema(close, length=CONFIG["ema_slow"])
+    ema20 = ema(close, CONFIG["ema_fast"])
+    ema50 = ema(close, CONFIG["ema_slow"])
 
     if ema20 is None or ema50 is None:
         return {"healthy_trend": False}
