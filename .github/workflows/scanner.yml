@@ -2,12 +2,18 @@ name: NSE IPO Breakout Scanner
 
 on:
   schedule:
-    - cron: '45 3 * * 1-5'
-    - cron: '30 5 * * 1-5'
-    - cron: '0  7 * * 1-5'
-    - cron: '30 8 * * 1-5'
+    # IST 09:30 = UTC 04:00  (market open)
+    - cron: '0 4 * * 1-5'
+    # IST 11:30 = UTC 06:00
+    - cron: '0 6 * * 1-5'
+    # IST 13:30 = UTC 08:00
+    - cron: '0 8 * * 1-5'
+    # IST 15:15 = UTC 09:45
+    - cron: '45 9 * * 1-5'
+  workflow_dispatch:   # allows manual trigger from Actions tab
 
-  workflow_dispatch:
+permissions:
+  contents: write      # needed to commit results.json back to repo
 
 jobs:
   scan:
@@ -24,11 +30,15 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install yfinance pandas requests schedule
+          pip install --break-system-packages yfinance pandas requests schedule
 
       - name: Run NSE IPO Scanner
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python nse_ipo_scanner.py
+
+      - name: Save results to repo
         run: |
-          python nse_ipo_scanner.py
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add results.json
+          git diff --staged --quiet || git commit -m "Update scan results $(date +'%d-%b-%Y %H:%M')"
+          git push
