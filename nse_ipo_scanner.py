@@ -5,7 +5,7 @@ Scans recent NSE IPO stocks for consolidation + breakout setup.
 Sends Telegram alerts when conditions are met.
 
 Requirements:
-    pip install yfinance pandas pandas_ta requests schedule
+    pip install yfinance pandas requests schedule
 
 Usage:
     python nse_ipo_scanner.py              # Single scan
@@ -52,9 +52,7 @@ CONFIG = {
 }
 
 # ─────────────────────────────────────────────
-# DEFAULT WATCHLIST  ← Update regularly!
-# Add/remove tickers as new IPOs list on NSE.
-# Format: "TICKER.NS"
+# DEFAULT WATCHLIST  ← Fallback if stocks.txt missing
 # ─────────────────────────────────────────────
 
 DEFAULT_IPO_TICKERS = [
@@ -99,31 +97,37 @@ DEFAULT_IPO_TICKERS = [
     # "VISHNIRMITI.NS", # Vishal Nirmiti Ltd
     # "SRITINDIA.NS",   # SRIT India Ltd
     # "MONEYVIEW.NS",   # Moneyview Ltd
-    # "ELEVATECMP.NS",  # Elevate Campuses Ltd
-    # "VARMORA.NS",     # Varmora Granito Ltd
-    # "HEROMOT.NS",     # Hero Motors Ltd
-    # "SHIPROCKET.NS",  # Shiprocket Ltd
-    # "MILKYMIST.NS",   # Milky Mist Dairy Food Ltd
-    # "MOLBIO.NS",      # Molbio Diagnostics Ltd
-    # "SYMBIOTEC.NS",   # Symbiotec Pharmalab Ltd
-    # "AUGMONT.NS",     # Augmont Enterprises Ltd
-    # "LOHIACORP.NS",   # Lohia Corp Ltd
-    # "AYEFINANCE.NS",  # Aye Finance Ltd
-    # "AMAGI.NS",       # Amagi Media Labs Ltd
-    # "BCLCOAL.NS",     # Bharat Coking Coal Ltd
-    # "PURPLSTYLE.NS",  # Purple Style Labs Ltd
-    # "ESDS.NS",        # ESDS Software Solution Ltd
-    # "TURTLEMINT.NS",  # Turtlemint Fintech Solutions Ltd
-    # "CMRGREEN.NS",    # CMR Green Technologies Ltd
-    # "SBIFUNDS.NS",    # SBI Funds Management Ltd
-    # "POWERICA.NS",    # Powerica Ltd
-    # "CLEANMAX.NS",    # Clean Max Enviro Energy Solutions
-    # "RENTOMOJO.NS",   # Rentomojo Ltd
-    # "PRASOL.NS",      # Prasol Chemicals Ltd
-    # "LEAPINDIA.NS",   # LEAP India Ltd
-    # "TECHNOCFT.NS",   # Technocraft Ventures Ltd
-    # "ARDEEINDS.NS",   # Ardee Industries Ltd
 ]
+
+
+# ─────────────────────────────────────────────
+# LOAD TICKERS  ← Reads stocks.txt if available
+# ─────────────────────────────────────────────
+
+def load_tickers() -> list:
+    """
+    Read tickers from stocks.txt (managed via HTML dashboard).
+    Falls back to DEFAULT_IPO_TICKERS if file not found.
+    stocks.txt format: one ticker per line, no .NS needed.
+    Lines starting with # are ignored (comments).
+    """
+    if os.path.exists("stocks.txt"):
+        tickers = []
+        with open("stocks.txt") as f:
+            for line in f:
+                line = line.strip().upper()
+                if line and not line.startswith("#"):
+                    # Add .NS if not already there
+                    t = line if line.endswith(".NS") else line + ".NS"
+                    tickers.append(t)
+        if tickers:
+            print(f"📋 Loaded {len(tickers)} tickers from stocks.txt")
+            return tickers
+        else:
+            print("⚠️  stocks.txt is empty — using default list")
+    else:
+        print(f"📋 stocks.txt not found — using {len(DEFAULT_IPO_TICKERS)} default tickers")
+    return DEFAULT_IPO_TICKERS[:]
 
 
 # ─────────────────────────────────────────────
@@ -343,7 +347,8 @@ def format_alert(ticker: str, consol: dict, trend: dict, breakout: dict, age: in
 # ─────────────────────────────────────────────
 
 def scan(verbose=True) -> list[dict]:
-    tickers = load_watchlist()
+    # ✅ Now reads from stocks.txt first (managed via HTML dashboard)
+    tickers = load_tickers()
     timestamp = datetime.now().strftime("%d-%b-%Y %H:%M")
     results = {"breakouts": [], "watch": [], "skipped": []}
 
@@ -418,6 +423,9 @@ def scan(verbose=True) -> list[dict]:
             print(f"  ⏳ {sym:15s} ₹{e['price']:>8.2f}  base={e['consol']['range_pct']:>4.1f}%  "
                   f"vol_dry={int(e['consol']['vol_dry_ratio']*100)}%  score={e['score']}/10")
 
+    # Save results to JSON for dashboard
+    save_results_json(results, timestamp)
+
     # Send Telegram alerts
     sent = 0
     for e in results["breakouts"]:
@@ -440,6 +448,39 @@ def scan(verbose=True) -> list[dict]:
         print(f"  📱 Sent {sent} Telegram alert(s)\n")
 
     return results
+
+
+def save_results_json(results: dict, timestamp: str):
+    """Save scan results to results.json for the HTML dashboard."""
+    def clean(entry):
+        return {
+            "ticker"   : entry["ticker"].replace(".NS", ""),
+            "price"    : entry["price"],
+            "score"    : entry["score"],
+            "age_days" : entry["age_days"],
+            "range_pct": entry["consol"]["range_pct"],
+            "support"  : entry["consol"]["consolidation_low"],
+            "resistance": entry["consol"]["consolidation_high"],
+            "vol_ratio": entry["breakout"]["vol_ratio"],
+            "break_pct": entry["breakout"]["break_pct"],
+            "rs_score" : entry["trend"].get("rs_score", 0),
+            "ema20"    : entry["trend"].get("ema20", 0),
+            "ema50"    : entry["trend"].get("ema50", 0),
+            "stop_loss": entry["consol"]["consolidation_low"],
+            "target"   : round(entry["consol"]["consolidation_high"] * 1.20, 2),
+            "breaking_out": entry["breakout"]["breaking_out"],
+        }
+
+    output = {
+        "timestamp" : timestamp,
+        "breakouts" : [clean(e) for e in results["breakouts"]],
+        "watch"     : [clean(e) for e in results["watch"]],
+        "total_scanned": len(results["breakouts"]) + len(results["watch"]) + len(results["skipped"]),
+    }
+
+    with open("results.json", "w") as f:
+        json.dump(output, f, indent=2)
+    print(f"  💾 Results saved to results.json")
 
 
 def is_market_hours():
@@ -467,7 +508,7 @@ def main():
         return
 
     if args.list:
-        tickers = load_watchlist()
+        tickers = load_tickers()
         print(f"\nWatchlist ({len(tickers)} tickers):")
         for t in tickers:
             print(f"  {t}")
