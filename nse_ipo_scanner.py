@@ -478,8 +478,16 @@ def save_results_json(results: dict, timestamp: str):
         "total_scanned": len(results["breakouts"]) + len(results["watch"]) + len(results["skipped"]),
     }
 
+    class _Enc(json.JSONEncoder):
+        def default(self, o):
+            import numpy as np
+            if isinstance(o, (np.bool_, np.integer)): return int(o)
+            if isinstance(o, np.floating): return float(o)
+            if isinstance(o, np.ndarray): return o.tolist()
+            return super().default(o)
+
     with open("results.json", "w") as f:
-        json.dump(output, f, indent=2)
+        json.dump(output, f, indent=2, cls=_Enc)
     print(f"  💾 Results saved to results.json")
 
 
