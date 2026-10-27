@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NSE IPO Scanner</title>
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --surface2: #1c2128;
+    --border: #30363d; --text: #e6edf3; --muted: #8b949e;
+    --green: #3fb950; --green-bg: #0d3321; --green-dim: #196127;
+    --yellow: #d29922; --yellow-bg: #2d1c00;
+    --blue: #58a6ff; --blue-bg: #051d4d;
+    --red: #f85149; --red-bg: #3d0c0c;
+    --accent: #238636; --purple: #a371f7; --purple-bg: #1e1040;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; min-height: 100vh; }
+
+  /* ── Header ── */
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; gap: 8px; }
+  .logo { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .logo span { color: var(--green); }
+  .logo-sub { font-size: 10px; color: var(--muted); font-weight: 400; }
+  .header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .last-scan { font-size: 11px; color: var(--muted); }
+
+  /* ── Tabs ── */
+  .tabs { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 16px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { padding: 12px 16px; font-size: 13px; font-weight: 500; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all .15s; -webkit-tap-highlight-color: transparent; }
+  .tab.active { color: var(--text); border-bottom-color: var(--green); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* ── Buttons ── */
+  .btn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); cursor: pointer; font-size: 13px; font-weight: 500; transition: all .15s; display: inline-flex; align-items: center; gap: 6px; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+  .btn:active { opacity: .7; }
+  .btn.loading { opacity: .6; pointer-events: none; }
+  .btn-primary { background: var(--accent); border-color: var(--green-dim); color: #fff; }
+  .btn-danger { background: var(--red-bg); border-color: var(--red); color: var(--red); }
+  .btn-purple { background: var(--purple-bg); border-color: var(--purple); color: var(--purple); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 6px; }
+
+  /* ── Setup / Config ── */
+  .setup-banner { background: var(--blue-bg); border: 1px solid var(--blue); border-radius: 10px; padding: 18px; margin: 16px; display: none; }
+  .setup-banner h3 { color: var(--blue); margin-bottom: 8px; font-size: 15px; }
+  .setup-banner p { color: var(--muted); font-size: 13px; line-height: 1.6; }
+  .setup-banner input { margin-top: 10px; width: 100%; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; }
+  .setup-banner .setup-actions { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* ── Layout ── */
+  main { padding: 16px; max-width: 1100px; margin: 0 auto; }
+
+  /* ── Stats ── */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 12px; }
+  .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+  .stat-value { font-size: 26px; font-weight: 700; line-height: 1; }
+  .stat-value.green { color: var(--green); }
+  .stat-value.yellow { color: var(--yellow); }
+  .stat-value.blue { color: var(--blue); }
+  .stat-value.muted { color: var(--muted); }
+  #statTime { font-size: 13px !important; line-height: 1.3; }
+
+  /* ── Section titles ── */
+  .section-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .badge { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; font-size: 11px; font-weight: 700; }
+  .badge-green { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-dim); }
+  .badge-yellow { background: var(--yellow-bg); color: var(--yellow); }
+
+  /* ── Cards grid ── */
+  .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; margin-bottom: 28px; }
+
+  /* ── Stock card ── */
+  .stock-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; transition: border-color .15s; }
+  .stock-card.breakout { border-left: 4px solid var(--green); }
+  .stock-card.watch { border-left: 4px solid var(--yellow); }
+  .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .ticker { font-size: 20px; font-weight: 800; }
+  .price { font-size: 18px; font-weight: 700; color: var(--green); }
+  .card-tags { display: flex; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
+  .tag { font-size: 11px; padding: 3px 8px; border-radius: 5px; font-weight: 600; }
+  .tag-breakout { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-dim); }
+  .tag-watch { background: var(--yellow-bg); color: var(--yellow); }
+  .tag-age { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+
+  .score-bar { margin-bottom: 14px; }
+  .score-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 5px; }
+  .score-track { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .score-fill { height: 100%; border-radius: 3px; transition: width .4s ease; }
+
+  .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .metric { background: var(--surface2); border-radius: 8px; padding: 10px; }
+  .metric-label { font-size: 10px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .04em; }
+  .metric-value { font-size: 14px; font-weight: 700; }
+  .metric-value.green { color: var(--green); }
+  .metric-value.yellow { color: var(--yellow); }
+  .metric-value.red { color: var(--red); }
+
+  .levels { display: flex; gap: 6px; margin-top: 12px; }
+  .level { flex: 1; text-align: center; padding: 8px 4px; border-radius: 8px; }
+  .level-support { background: var(--red-bg); color: var(--red); }
+  .level-resist { background: var(--blue-bg); color: var(--blue); }
+  .level-target { background: var(--green-bg); color: var(--green); }
+  .level-label { font-size: 9px; opacity: .75; margin-bottom: 3px; text-transform: uppercase; letter-spacing: .04em; }
+  .level-val { font-weight: 700; font-size: 12px; }
+
+  /* ── Misc ── */
+  .empty-state { text-align: center; padding: 50px 20px; color: var(--muted); }
+  .empty-state .icon { font-size: 36px; margin-bottom: 10px; }
+  .empty-state p { font-size: 13px; line-height: 1.6; }
+  .error-box { background: var(--red-bg); border: 1px solid var(--red); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; color: var(--red); font-size: 13px; display: none; line-height: 1.5; }
+  .success-box { background: var(--green-bg); border: 1px solid var(--green-dim); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; color: var(--green); font-size: 13px; display: none; }
+  .info-box { background: var(--blue-bg); border: 1px solid #1c4a9e; border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; color: var(--blue); font-size: 13px; line-height: 1.6; }
+
+  /* ── Stocks Manager ── */
+  .stocks-toolbar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+  .stocks-toolbar .add-row { display: flex; gap: 8px; flex: 1; min-width: 220px; }
+  .stocks-toolbar input[type=text] { flex: 1; padding: 9px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; text-transform: uppercase; }
+  .stocks-toolbar input:focus { outline: none; border-color: var(--green); }
+
+  .stocks-list { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
+  .stock-row { display: flex; align-items: center; padding: 11px 14px; border-bottom: 1px solid var(--border); gap: 10px; transition: background .1s; }
+  .stock-row:last-child { border-bottom: none; }
+  .stock-row:hover { background: var(--surface2); }
+  .stock-row .s-num { font-size: 11px; color: var(--muted); width: 24px; flex-shrink: 0; }
+  .stock-row .s-name { font-weight: 700; font-size: 14px; flex: 1; letter-spacing: .03em; }
+  .stock-row .s-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 4px 6px; border-radius: 4px; -webkit-tap-highlight-color: transparent; line-height: 1; }
+  .stock-row .s-del:hover { color: var(--red); background: var(--red-bg); }
+  .stocks-count { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+
+  /* ── Settings panel ── */
+  .settings-section { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px; margin-bottom: 16px; }
+  .settings-section h3 { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 14px; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; }
+  .field input { width: 100%; padding: 10px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; }
+  .field input:focus { outline: none; border-color: var(--blue); }
+  .field-hint { font-size: 11px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+  .field-actions { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+
+  /* ── FAB ── */
+  .fab { display: none; position: fixed; bottom: 20px; right: 20px; z-index: 100; width: 56px; height: 56px; border-radius: 50%; background: var(--accent); border: none; color: #fff; font-size: 22px; box-shadow: 0 4px 16px rgba(0,0,0,.5); cursor: pointer; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
+
+  /* ── Spinner ── */
+  .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; flex-shrink: 0; }
+  .spinner-dark { border-color: var(--border); border-top-color: var(--green); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Responsive ── */
+  @media (max-width: 480px) {
+    header { padding: 10px 12px; }
+    .logo-sub { display: none; }
+    .last-scan { display: none; }
+    main { padding: 12px; }
+    .setup-banner { margin: 12px; }
+    .stats-row { grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+    .stat-card { padding: 12px 10px; }
+    .stat-value { font-size: 22px; }
+    #statTime { font-size: 11px !important; }
+    .cards-grid { grid-template-columns: 1fr; gap: 10px; }
+    .ticker { font-size: 18px; }
+    .price { font-size: 16px; }
+    .levels { gap: 5px; }
+    .level-val { font-size: 11px; }
+    .fab { display: flex; }
+    #refreshBtn { display: none; }
+    #runScanBtn { display: none; }
+    #fabScan { display: flex; }
+  }
+  @media (min-width: 481px) and (max-width: 768px) {
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .cards-grid { grid-template-columns: 1fr; }
+    .last-scan { display: none; }
+  }
+  @media (min-width: 769px) { .last-scan { display: inline; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">📊 <span>NSE</span> IPO Scanner <span class="logo-sub">Post-IPO Breakout</span></div>
+  <div class="header-right">
+    <span class="last-scan" id="lastScan"></span>
+    <button class="btn btn-purple" id="runScanBtn" onclick="triggerScan()" title="Run scanner now via GitHub Actions">▶ Run Scan</button>
+    <button class="btn btn-primary" id="refreshBtn" onclick="switchTab('results'); loadResults()">🔄 Refresh</button>
+  </div>
+</header>
+
+<!-- Tab Bar -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('results')" id="tab-results">📊 Results</div>
+  <div class="tab" onclick="switchTab('stocks')" id="tab-stocks">📋 My Stocks</div>
+  <div class="tab" onclick="switchTab('settings')" id="tab-settings">⚙️ Settings</div>
+</div>
+
+<button class="fab" onclick="switchTab('results'); loadResults()" title="Refresh">🔄</button>
+<button class="fab" id="fabScan" onclick="triggerScan()" title="Run Scan Now" style="bottom:86px;background:#6e40c9;">▶</button>
+
+<main>
+
+<!-- ══════════════ RESULTS TAB ══════════════ -->
+<div class="tab-content active" id="content-results">
+
+  <div class="setup-banner" id="setupBanner">
+    <h3>🔧 First-time Setup</h3>
+    <p>Enter your GitHub username and repo name to connect the dashboard to your scanner.</p>
+    <input type="text" id="setupUser" placeholder="GitHub Username (e.g. infy0708)" autocomplete="off" autocapitalize="none" />
+    <input type="text" id="setupRepo" placeholder="Repository name (e.g. nse-ipo-scanner)" style="margin-top:6px;" autocomplete="off" autocapitalize="none" />
+    <div class="setup-actions">
+      <button class="btn btn-primary" onclick="saveSetup()">Connect →</button>
+    </div>
+  </div>
+
+  <div class="error-box" id="errorBox"></div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-label">🚀 Breakouts</div><div class="stat-value green" id="statBreakouts">—</div></div>
+    <div class="stat-card"><div class="stat-label">⏳ Watch List</div><div class="stat-value yellow" id="statWatch">—</div></div>
+    <div class="stat-card"><div class="stat-label">📊 Scanned</div><div class="stat-value blue" id="statTotal">—</div></div>
+    <div class="stat-card"><div class="stat-label">🕐 Last Scan</div><div class="stat-value muted" id="statTime">—</div></div>
+  </div>
+
+  <div class="section-title">🚀 BREAKOUTS <span class="badge badge-green" id="breakoutCount">0</span></div>
+  <div class="cards-grid" id="breakoutsGrid"></div>
+
+  <div class="section-title">⏳ WATCH LIST <span class="badge badge-yellow" id="watchCount">0</span></div>
+  <div class="cards-grid" id="watchGrid"></div>
+</div>
+
+<!-- ══════════════ MY STOCKS TAB ══════════════ -->
+<div class="tab-content" id="content-stocks">
+
+  <div class="info-box" id="stocksInfo" style="display:none;">
+    ℹ️ To save stocks back to GitHub, add your <strong>GitHub Token</strong> in the Settings tab first. Without it you can only view the list.
+  </div>
+  <div class="error-box" id="stocksError"></div>
+  <div class="success-box" id="stocksSuccess"></div>
+
+  <div class="stocks-toolbar">
+    <div class="add-row">
+      <input type="text" id="newTicker" placeholder="Add ticker (e.g. ZOMATO)" maxlength="20" autocapitalize="characters" autocomplete="off" onkeydown="if(event.key==='Enter') addStock()" />
+      <button class="btn btn-primary" onclick="addStock()">＋ Add</button>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn" onclick="loadStocks()"><span class="spinner spinner-dark" id="loadStocksSpinner" style="display:none"></span> 🔄 Load from GitHub</button>
+      <button class="btn btn-primary" id="saveStocksBtn" onclick="saveStocks()">💾 Save to GitHub</button>
+    </div>
+  </div>
+
+  <div class="stocks-count" id="stocksCount"></div>
+  <div class="stocks-list" id="stocksList">
+    <div class="empty-state"><div class="icon">📋</div><p>Click "Load from GitHub" to load your stocks list.<br>Or add stocks manually above.</p></div>
+  </div>
+
+  <div style="margin-top:12px;">
+    <p style="font-size:12px;color:var(--muted);line-height:1.7;">
+      ✅ Changes here update <strong>stocks.txt</strong> in your GitHub repo.<br>
+      ✅ The scanner reads this file automatically on next run.<br>
+      ✅ Tickers are saved without <code>.NS</code> — the scanner adds it.
+    </p>
+  </div>
+</div>
+
+<!-- ══════════════ SETTINGS TAB ══════════════ -->
+<div class="tab-content" id="content-settings">
+
+  <div class="settings-section">
+    <h3>🔗 GitHub Connection</h3>
+    <div class="field">
+      <label>GitHub Username</label>
+      <input type="text" id="cfgUser" placeholder="e.g. infy0708" autocomplete="off" autocapitalize="none" />
+    </div>
+    <div class="field">
+      <label>Repository Name</label>
+      <input type="text" id="cfgRepo" placeholder="e.g. nse-ipo-scanner" autocomplete="off" autocapitalize="none" />
+    </div>
+    <div class="field-actions">
+      <button class="btn btn-primary" onclick="saveGitHubConfig()">✅ Save</button>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <h3>🔑 GitHub Token (to edit stocks from here)</h3>
+    <div class="field">
+      <label>Personal Access Token</label>
+      <input type="password" id="cfgToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" />
+      <div class="field-hint">
+        Needed only to save stocks from this dashboard.<br>
+        Stored only in your browser (localStorage) — never sent anywhere else.<br><br>
+        <strong>How to get it:</strong><br>
+        1. Go to GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)<br>
+        2. Click "Generate new token (classic)"<br>
+        3. Tick <strong>repo</strong> scope → Generate → Copy the token here
+      </div>
+    </div>
+    <div class="field-actions">
+      <button class="btn btn-primary" onclick="saveTokenConfig()">✅ Save Token</button>
+      <button class="btn btn-danger" onclick="clearToken()">🗑️ Clear Token</button>
+    </div>
+    <div class="success-box" id="tokenSuccess" style="margin-top:10px;"></div>
+  </div>
+
+  <div class="settings-section">
+    <h3>ℹ️ How the Dashboard Works</h3>
+    <p style="font-size:13px;color:var(--muted);line-height:1.8;">
+      📊 <strong>Results tab</strong> — fetches <code>results.json</code> from your GitHub repo (written by the scanner)<br>
+      📋 <strong>My Stocks tab</strong> — reads/writes <code>stocks.txt</code> in your repo<br>
+      ⏰ <strong>Scanner runs</strong> automatically Mon–Fri at 09:15, 11:00, 12:30, 14:00 IST via GitHub Actions<br>
+      📱 Works on mobile browser — save to home screen for app-like experience
+    </p>
+  </div>
+</div>
+
+</main>
+
+<script>
+// ═══════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════
+const STORAGE_KEY = 'nse_scanner_cfg';
+
+function getCfg() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}'); } catch { return {}; } }
+function setCfg(c) { localStorage.setItem(STORAGE_KEY, JSON.stringify({...getCfg(),...c})); }
+
+function getResultsUrl() {
+  const c = getCfg();
+  if (!c.user||!c.repo) return null;
+  return `https://raw.githubusercontent.com/${c.user}/${c.repo}/main/results.json`;
+}
+function getApiBase() {
+  const c = getCfg();
+  return `https://api.github.com/repos/${c.user}/${c.repo}`;
+}
+
+// ═══════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.getElementById('content-'+name).classList.add('active');
+  if (name==='stocks') { loadStocks(); }
+  if (name==='settings') { fillSettings(); }
+}
+
+// ═══════════════════════════════════════════
+// SETUP
+// ═══════════════════════════════════════════
+function saveSetup() {
+  const user = document.getElementById('setupUser').value.trim();
+  const repo = document.getElementById('setupRepo').value.trim();
+  if (!user||!repo) { alert('Enter both fields.'); return; }
+  setCfg({user,repo});
+  document.getElementById('setupBanner').style.display='none';
+  loadResults();
+}
+function fillSettings() {
+  const c = getCfg();
+  document.getElementById('cfgUser').value = c.user||'';
+  document.getElementById('cfgRepo').value = c.repo||'';
+  document.getElementById('cfgToken').value = c.token||'';
+}
+function saveGitHubConfig() {
+  const user=document.getElementById('cfgUser').value.trim();
+  const repo=document.getElementById('cfgRepo').value.trim();
+  if(!user||!repo){alert('Enter both fields.');return;}
+  setCfg({user,repo});
+  alert('✅ Saved! Switching to Results.');
+  switchTab('results'); loadResults();
+}
+function saveTokenConfig() {
+  const token=document.getElementById('cfgToken').value.trim();
+  setCfg({token});
+  const box=document.getElementById('tokenSuccess');
+  box.textContent = token ? '✅ Token saved to browser.' : '🗑️ Token cleared.';
+  box.style.display='block';
+  setTimeout(()=>box.style.display='none',3000);
+}
+function clearToken() {
+  document.getElementById('cfgToken').value='';
+  setCfg({token:''});
+  const box=document.getElementById('tokenSuccess');
+  box.textContent='🗑️ Token cleared.';
+  box.style.display='block';
+  setTimeout(()=>box.style.display='none',2000);
+}
+
+// ═══════════════════════════════════════════
+// SCORE COLOR
+// ═══════════════════════════════════════════
+function scoreColor(s) {
+  if(s>=7) return '#3fb950';
+  if(s>=4) return '#d29922';
+  return '#f85149';
+}
+
+// ═══════════════════════════════════════════
+// CARD BUILDER
+// ═══════════════════════════════════════════
+function buildCard(item, type) {
+  const isBreakout = type==='breakout';
+  const scoreW = (item.score/10)*100;
+  const scoreCol = scoreColor(item.score);
+  return `
+  <div class="stock-card ${isBreakout?'breakout':'watch'}">
+    <div class="card-header">
+      <div>
+        <div class="ticker">${item.ticker}</div>
+        <div class="card-tags">
+          ${isBreakout?'<span class="tag tag-breakout">🚀 BREAKOUT</span>':'<span class="tag tag-watch">⏳ WATCH</span>'}
+          <span class="tag tag-age">${item.age_days}d listed</span>
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <div class="price">₹${item.price.toLocaleString('en-IN',{minimumFractionDigits:2})}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">${'⭐'.repeat(Math.min(item.score,10))}</div>
+      </div>
+    </div>
+    <div class="score-bar">
+      <div class="score-label"><span>Setup Score</span><span style="color:${scoreCol};font-weight:700;">${item.score}/10</span></div>
+      <div class="score-track"><div class="score-fill" style="width:${scoreW}%;background:${scoreCol};"></div></div>
+    </div>
+    <div class="metrics">
+      <div class="metric"><div class="metric-label">Base Range</div><div class="metric-value ${item.range_pct<10?'green':'yellow'}">${item.range_pct}%</div></div>
+      <div class="metric"><div class="metric-label">Vol Ratio</div><div class="metric-value ${item.vol_ratio>1.5?'green':'yellow'}">${item.vol_ratio}×</div></div>
+      <div class="metric"><div class="metric-label">3M RS Score</div><div class="metric-value ${item.rs_score>0?'green':'red'}">${item.rs_score}%</div></div>
+      <div class="metric"><div class="metric-label">Break %</div><div class="metric-value ${item.break_pct>0?'green':'muted'}">${item.break_pct>0?'+':''}${item.break_pct}%</div></div>
+    </div>
+    <div class="levels">
+      <div class="level level-support"><div class="level-label">Stop Loss</div><div class="level-val">₹${item.stop_loss}</div></div>
+      <div class="level level-resist"><div class="level-label">Resistance</div><div class="level-val">₹${item.resistance}</div></div>
+      <div class="level level-target"><div class="level-label">Target +20%</div><div class="level-val">₹${item.target}</div></div>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════
+// TRIGGER SCAN VIA GITHUB ACTIONS
+// ═══════════════════════════════════════════
+let _scanPolling = null;
+
+function setScanStatus(msg, done=false, error=false) {
+  const btn = document.getElementById('runScanBtn');
+  const fab = document.getElementById('fabScan');
+  const ls  = document.getElementById('lastScan');
+  if (done || error) {
+    if (btn) { btn.innerHTML = '▶ Run Scan'; btn.classList.remove('loading'); btn.disabled = false; }
+    if (fab) { fab.textContent = '▶'; fab.style.background = '#6e40c9'; }
+    if (ls && msg) ls.textContent = msg;
+  } else {
+    if (btn) { btn.innerHTML = `<span class="spinner"></span> ${msg}`; btn.classList.add('loading'); btn.disabled = true; }
+    if (fab) { fab.textContent = '⏳'; }
+    if (ls) ls.textContent = msg;
+  }
+}
+
+async function triggerScan() {
+  const c = getCfg();
+  if (!c.user || !c.repo) { switchTab('settings'); return; }
+  if (!c.token) { switchTab('settings'); return; }
+  if (_scanPolling) return;
+
+  const ghHeaders = { Authorization: `token ${c.token}`, Accept: 'application/vnd.github+json' };
+
+  setScanStatus('Connecting…');
+
+  try {
+    // 1. Record current SHA of results.json so we know when it changes
+    let currentSha = null;
+    try {
+      const shaRes = await fetch(
+        `https://api.github.com/repos/${c.user}/${c.repo}/contents/results.json`,
+        { headers: ghHeaders }
+      );
+      if (shaRes.ok) { const d = await shaRes.json(); currentSha = d.sha; }
+    } catch(e) {}
+
+    // 2. Get workflow id
+    const wfRes = await fetch(
+      `https://api.github.com/repos/${c.user}/${c.repo}/actions/workflows`,
+      { headers: ghHeaders }
+    );
+    if (!wfRes.ok) throw new Error(`GitHub API error (${wfRes.status}) — check your token has repo scope`);
+    const wfData = await wfRes.json();
+    const workflow = wfData.workflows?.[0];
+    if (!workflow) throw new Error('No workflow found in this repo');
+
+    // 3. Trigger the workflow
+    const trigRes = await fetch(
+      `https://api.github.com/repos/${c.user}/${c.repo}/actions/workflows/${workflow.id}/dispatches`,
+      { method: 'POST',
+        headers: { ...ghHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ref: 'main' }) }
+    );
+    if (!trigRes.ok) throw new Error(`Could not trigger scan (${trigRes.status})`);
+
+    setScanStatus('Scanning… 0s');
+    const started = Date.now();
+
+    // 4. Poll GitHub API every 6s — compare SHA, not CDN-cached raw file
+    _scanPolling = setInterval(async () => {
+      const elapsed = Math.round((Date.now() - started) / 1000);
+      setScanStatus(`Scanning… ${elapsed}s`);
+
+      if (elapsed > 200) {
+        clearInterval(_scanPolling); _scanPolling = null;
+        setScanStatus('⚠️ Timed out — click Refresh', true, true);
+        return;
+      }
+
+      try {
+        // GitHub Contents API — always fresh, no CDN cache
+        const res = await fetch(
+          `https://api.github.com/repos/${c.user}/${c.repo}/contents/results.json`,
+          { headers: ghHeaders }
+        );
+        if (!res.ok) return;
+        const fileData = await res.json();
+
+        if (fileData.sha !== currentSha) {
+          // File changed — decode base64 content directly from API
+          const content = JSON.parse(atob(fileData.content.replace(/\n/g, '')));
+          clearInterval(_scanPolling); _scanPolling = null;
+          setScanStatus('Last: ' + content.timestamp, true);
+          renderResults(content);
+          switchTab('results');
+        }
+      } catch(e) { /* keep polling */ }
+    }, 6000);
+
+  } catch(e) {
+    setScanStatus('❌ ' + e.message, true, true);
+    _scanPolling = null;
+  }
+}
+
+// LOAD RESULTS
+// ═══════════════════════════════════════════
+function renderResults(data) {
+  document.getElementById('statBreakouts').textContent=data.breakouts.length;
+  document.getElementById('statWatch').textContent=data.watch.length;
+  document.getElementById('statTotal').textContent=data.total_scanned;
+  document.getElementById('statTime').textContent=data.timestamp;
+  document.getElementById('lastScan').textContent='Last: '+data.timestamp;
+  document.getElementById('breakoutCount').textContent=data.breakouts.length;
+  document.getElementById('watchCount').textContent=data.watch.length;
+
+  const bg=document.getElementById('breakoutsGrid');
+  bg.innerHTML=data.breakouts.length
+    ? data.breakouts.map(s=>buildCard(s,'breakout')).join('')
+    : `<div class="empty-state" style="grid-column:1/-1"><div class="icon">😴</div><p>No breakouts in this scan.<br>Stocks are still consolidating.</p></div>`;
+
+  const wg=document.getElementById('watchGrid');
+  wg.innerHTML=data.watch.length
+    ? data.watch.map(s=>buildCard(s,'watch')).join('')
+    : `<div class="empty-state" style="grid-column:1/-1"><div class="icon">📭</div><p>No stocks in watch list.</p></div>`;
+}
+
+async function loadResults() {
+  const url = getResultsUrl();
+  if (!url) { document.getElementById('setupBanner').style.display='block'; return; }
+
+  const btn=document.getElementById('refreshBtn');
+  btn.innerHTML='<span class="spinner"></span> Loading...';
+  btn.classList.add('loading');
+  document.getElementById('errorBox').style.display='none';
+
+  try {
+    const res=await fetch(url+'?t='+Date.now());
+    if(!res.ok) throw new Error(`HTTP ${res.status} — results.json not found. Click ▶ Run Scan to run the scanner now.`);
+    const data=await res.json();
+    renderResults(data);
+  } catch(err) {
+    const box=document.getElementById('errorBox');
+    box.textContent='❌ '+err.message;
+    box.style.display='block';
+  } finally {
+    btn.innerHTML='🔄 Refresh';
+    btn.classList.remove('loading');
+  }
+}
+
+// ═══════════════════════════════════════════
+// STOCKS MANAGER
+// ═══════════════════════════════════════════
+let stocksList = [];   // current in-memory list
+let stocksSha  = '';   // GitHub file SHA (needed to update)
+
+function renderStocksList() {
+  const el = document.getElementById('stocksList');
+  const cnt = document.getElementById('stocksCount');
+  if (!stocksList.length) {
+    el.innerHTML=`<div class="empty-state"><div class="icon">📋</div><p>No stocks yet. Add one above or load from GitHub.</p></div>`;
+    cnt.textContent='';
+    return;
+  }
+  cnt.textContent=`${stocksList.length} stocks`;
+  el.innerHTML = stocksList.map((s,i)=>`
+    <div class="stock-row">
+      <span class="s-num">${i+1}</span>
+      <span class="s-name">${s}</span>
+      <button class="s-del" onclick="removeStock(${i})" title="Remove">✕</button>
+    </div>`).join('');
+}
+
+function addStock() {
+  const inp=document.getElementById('newTicker');
+  const val=inp.value.trim().toUpperCase().replace(/\.NS$/,'');
+  if (!val) return;
+  if (stocksList.includes(val)) { showStocksMsg('error','⚠️ '+val+' is already in the list.'); inp.value=''; return; }
+  if (!/^[A-Z0-9&-]{1,20}$/.test(val)) { showStocksMsg('error','⚠️ Invalid ticker name.'); return; }
+  stocksList.push(val);
+  renderStocksList();
+  inp.value='';
+  inp.focus();
+  showStocksMsg('success','✅ '+val+' added. Click "Save to GitHub" to update.');
+}
+
+function removeStock(i) {
+  const name=stocksList[i];
+  stocksList.splice(i,1);
+  renderStocksList();
+  showStocksMsg('success','🗑️ '+name+' removed. Click "Save to GitHub" to update.');
+}
+
+function showStocksMsg(type, msg) {
+  const id = type==='error' ? 'stocksError' : 'stocksSuccess';
+  const other = type==='error' ? 'stocksSuccess' : 'stocksError';
+  document.getElementById(other).style.display='none';
+  const el=document.getElementById(id);
+  el.textContent=msg;
+  el.style.display='block';
+  setTimeout(()=>el.style.display='none', 4000);
+}
+
+async function loadStocks() {
+  const c=getCfg();
+  if (!c.user||!c.repo) { showStocksMsg('error','❌ Set your GitHub username and repo in Settings first.'); return; }
+
+  const spinner=document.getElementById('loadStocksSpinner');
+  spinner.style.display='inline-block';
+
+  // Check if token available
+  const infoBox=document.getElementById('stocksInfo');
+  infoBox.style.display = c.token ? 'none' : 'block';
+
+  try {
+    // Use API (works with or without token for public repos)
+    const headers = {'Accept':'application/vnd.github.v3+json'};
+    if (c.token) headers['Authorization']='token '+c.token;
+
+    const res=await fetch(`${getApiBase()}/contents/stocks.txt`, {headers});
+    if (res.status===404) {
+      // File doesn't exist yet — start with empty list
+      stocksList=[];
+      stocksSha='';
+      renderStocksList();
+      showStocksMsg('success','ℹ️ stocks.txt not found in repo. Add stocks here and save to create it.');
+      return;
+    }
+    if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
+    const data=await res.json();
+    stocksSha=data.sha;
+    // Decode base64
+    const text=atob(data.content.replace(/\n/g,''));
+    stocksList = text.split('\n')
+      .map(l=>l.trim().toUpperCase().replace(/\.NS$/,''))
+      .filter(l=>l && !l.startsWith('#'));
+    renderStocksList();
+    showStocksMsg('success',`✅ Loaded ${stocksList.length} stocks from GitHub.`);
+  } catch(err) {
+    showStocksMsg('error','❌ '+err.message);
+  } finally {
+    spinner.style.display='none';
+  }
+}
+
+async function saveStocks() {
+  const c=getCfg();
+  if (!c.user||!c.repo) { showStocksMsg('error','❌ Set GitHub details in Settings first.'); return; }
+  if (!c.token) { showStocksMsg('error','❌ GitHub Token needed to save. Add it in Settings → GitHub Token.'); return; }
+
+  const btn=document.getElementById('saveStocksBtn');
+  btn.innerHTML='<span class="spinner"></span> Saving...';
+  btn.classList.add('loading');
+
+  try {
+    const content = stocksList.join('\n')+'\n';
+    const encoded = btoa(unescape(encodeURIComponent(content)));
+
+    const body = {
+      message: `Update stocks.txt — ${stocksList.length} stocks`,
+      content: encoded,
+    };
+    if (stocksSha) body.sha = stocksSha;
+
+    const res=await fetch(`${getApiBase()}/contents/stocks.txt`, {
+      method:'PUT',
+      headers:{
+        'Authorization':'token '+c.token,
+        'Accept':'application/vnd.github.v3+json',
+        'Content-Type':'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (!res.ok) {
+      const err=await res.json();
+      throw new Error(err.message||`HTTP ${res.status}`);
+    }
+    const data=await res.json();
+    stocksSha=data.content.sha;
+    showStocksMsg('success',`✅ Saved ${stocksList.length} stocks to GitHub! Scanner will use this list on next run.`);
+  } catch(err) {
+    showStocksMsg('error','❌ Save failed: '+err.message);
+  } finally {
+    btn.innerHTML='💾 Save to GitHub';
+    btn.classList.remove('loading');
+  }
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  const c=getCfg();
+  if (!c.user||!c.repo) {
+    document.getElementById('setupBanner').style.display='block';
+  } else {
+    loadResults();
+  }
+});
+</script>
+</body>
+</html>
