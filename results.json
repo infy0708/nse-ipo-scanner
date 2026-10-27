@@ -1,6 +1,24 @@
 {
-  "timestamp": "26-Oct-2026 16:19",
+  "timestamp": "27-Oct-2026 06:50",
   "breakouts": [],
-  "watch": [],
+  "watch": [
+    {
+      "ticker": "SHADOWFAX",
+      "price": 292.9,
+      "score": 7,
+      "age_days": 272,
+      "range_pct": 14.98,
+      "support": 262.95,
+      "resistance": 302.35,
+      "vol_ratio": 0.51,
+      "break_pct": 0,
+      "rs_score": 41.1,
+      "ema20": 282.16,
+      "ema50": 268.56,
+      "stop_loss": 262.95,
+      "target": 362.82,
+      "breaking_out": 0
+    }
+  ],
   "total_scanned": 29
 }
